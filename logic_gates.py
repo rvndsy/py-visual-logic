@@ -36,7 +36,13 @@ class Node:
 
     # Update boolean (output) state of gate
     def update_state(self) -> None:
-        inputs = [input.state for input in self.input_nodes]
+        if self is None: return
+        inputs = []
+        for input in self.input_nodes:
+            if input is None:
+                inputs.append(False)
+            else:
+                inputs.append(input.state)
         self.state = self.logic_fn(*inputs)
 
     # Placeholder for the function that will do the logic
@@ -46,46 +52,48 @@ class Node:
 class Input(Node):
     INPUT_COUNT = 0
     def update_state(self, *inputs: bool) -> None:
-        if len(inputs) != self.INPUT_COUNT:
-            self.state = False
+        if len(inputs) != 1:
+            return
         self.state = inputs[0]
+        return
 
 class Output(Node):
     INPUT_COUNT = 1
     def logic_fn(self, *inputs: bool) -> bool:
-        if len(inputs) == 0:
-            return False
-        for input in inputs:
-            if input == True:
-                return True
-        return False
+        return inputs[0]
 
 class OR(Node):
     INPUT_COUNT = 2
     def logic_fn(self, *inputs: bool) -> bool:
-        if len(inputs) == 0:
-            return False
-        if len(inputs) == 1:
-            return inputs[0] | False
         return inputs[0] | inputs[1]
 
 class AND(Node):
     INPUT_COUNT = 2
     def logic_fn(self, *inputs: bool) -> bool:
-        if len(inputs) == 0:
-            return False
-        if len(inputs) == 1:
-            return inputs[0] & False
         return inputs[0] & inputs[1]
 
 class NOT(Node):
     INPUT_COUNT = 1
     def logic_fn(self, *inputs: bool) -> bool:
-        if len(inputs) == 0:
-            return False
         return (not inputs[0])
 
 def connect_out_to_in_at(output_node: 'Node', input_node: 'Node', input_index: int = 0) -> None:
     output_node.add_output_nodes(input_node)
     input_node.add_input_node_at(output_node, input_index)
     return
+
+# DFS
+def recursive_update(start_node: 'Node') -> None:
+
+    def recursive_update_single(node: 'Node') -> None:
+        if node is None:
+            return
+        print(type(node), ": ", node.state)
+        node.update_state()
+        for next_node in node.output_nodes:
+            recursive_update_single(next_node)
+        return
+
+    recursive_update_single(start_node);
+    return
+
