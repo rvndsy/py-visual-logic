@@ -1,5 +1,5 @@
 class Node:
-    # GUI
+    # GUI (probably should place this elsewhere)
     xpos: int
     ypos: int
     # Logic
@@ -17,6 +17,7 @@ class Node:
         self.state = False
         return
 
+    # TODO: Thing that doesn't belong here
     def update_location(self, xpos: int, ypos: int) -> None:
         self.xpos = xpos
         self.ypos = ypos
@@ -82,11 +83,11 @@ def connect_out_to_in_at(output_node: 'Node', input_node: 'Node', input_index: i
     input_node.add_input_node_at(output_node, input_index)
     return
 
-# DFS
+# DFS (loops are going to be a problem...)
 def recursive_update(start_node: 'Node') -> None:
 
     def recursive_update_single(node: 'Node') -> None:
-        if node is None:
+        if node is None or node is start_node:
             return
         print(type(node), ": ", node.state)
         node.update_state()

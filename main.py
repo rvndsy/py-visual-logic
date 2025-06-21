@@ -1,4 +1,6 @@
+from PyQt6.QtWidgets import QApplication, QMainWindow
 from logic_gates import *
+from window import *
 
 if __name__ == "__main__":
     input1 = Input(0, 0)
@@ -33,3 +35,9 @@ if __name__ == "__main__":
     print("OR:      ", or_gate.state)
     print("AND:     ", and_gate.state)
     print("Output:  ",output.state)
+
+    app = QApplication(sys.argv)
+
+    w = Window()
+    w.show()
+    sys.exit(app.exec())
