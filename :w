@@ -95,8 +95,6 @@ class ConnectionLine(QGraphicsLineItem):
     LINE_WIDTH = 4
     LINE_COLOR = QColor("black")
     lineBrush = QBrush(QColor("red"))
-    start: 'ConnectionPoint | None'
-    end: 'ConnectionPoint | None'
     def __init__(self, start, p2):
         super().__init__()
         self.start = start
@@ -105,7 +103,7 @@ class ConnectionLine(QGraphicsLineItem):
         self.setLine(self._line)
         self.setPenParams(self.LINE_COLOR, self.LINE_WIDTH)
 
-    def connectionPoints(self) -> tuple['ConnectionPoint | None', 'ConnectionPoint | None']:
+    def connectionPoints(self):
         return self.start, self.end
 
     def setPenParams(self, color: QColor, width: int) -> None:
@@ -154,11 +152,7 @@ class ConnectionPoint(QGraphicsEllipseItem):
             if existing.connectionPoints() == lineItem.connectionPoints():
                 # another line with the same connection points already exists
                 return False
-            p1 = lineItem.connectionPoints()[0]
-            p2 = lineItem.connectionPoints()[1]
-            if p1 is not None and p2 is not None:
-                if p1.isInput == p2.isInput:
-                    return False
+            if lineItem.connectionPoints() == :
         self.lines.append(lineItem)
         return True
 
@@ -197,26 +191,25 @@ class DraggableNode(QGraphicsItem):
 
         self.inputCount = GateInputCount[gateType]
         if self.inputCount == 1:
-            connectionPoint = ConnectionPoint(self, True)
+            connectionPoint = ConnectionPoint(self, False)
             self.connections.append(connectionPoint)
             connectionPoint.setX(0 + ConnectionPoint.DIAMETER)
             connectionPoint.setY(self.getCenterY())
         if self.inputCount == 2:
-            connectionPoint = ConnectionPoint(self, True)
+            connectionPoint = ConnectionPoint(self, False)
             self.connections.append(connectionPoint)
             connectionPoint.setX(0 + ConnectionPoint.DIAMETER)
             connectionPoint.setY(self.getCenterY() + 9.5)
-            connectionPoint = ConnectionPoint(self, True)
+            connectionPoint = ConnectionPoint(self, False)
             self.connections.append(connectionPoint)
             connectionPoint.setX(0 + ConnectionPoint.DIAMETER)
             connectionPoint.setY(self.getCenterY() - 9.5)
 
         # Assuming just 1 output for now...
-        if gateType != GateType.OUTPUT:
-            connectionPoint = ConnectionPoint(self, False)
-            connectionPoint.setX(float(self.pixmap.width()) - ConnectionPoint.DIAMETER/2)
-            connectionPoint.setY(self.getCenterY())
-            self.connections.append(connectionPoint)
+        connectionPoint = ConnectionPoint(self, True)
+        connectionPoint.setX(float(self.pixmap.width()) - ConnectionPoint.DIAMETER/2)
+        connectionPoint.setY(self.getCenterY())
+        self.connections.append(connectionPoint)
 
     def getCenterY(self) -> float:
         return float(self.pixmap.height())/2
@@ -254,7 +247,7 @@ class Scene(QGraphicsScene):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if event and self.newConnection:
+        if event is not None and self.newConnection:
             item = self.connectionPointAt(event.scenePos())
             if (item and item != self.startItem and self.startItem is not None and self.startItem.isInput != item.isInput):
                     p2 = item.scenePos()
@@ -265,9 +258,9 @@ class Scene(QGraphicsScene):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if event and self.newConnection:
+        if event is not None and self.newConnection:
             item = self.connectionPointAt(event.scenePos())
-            if self.startItem and item and item != self.startItem:
+            if self.startItem is not None and item and item != self.startItem:
                 self.newConnection.setEnd(item)
                 if self.startItem.addLine(self.newConnection):
                     item.addLine(self.newConnection)

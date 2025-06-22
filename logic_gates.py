@@ -1,19 +1,39 @@
+from enum import Enum
+
+class GateType(Enum):
+    INPUT = 0
+    OUTPUT = 1
+    AND = 2
+    OR = 3
+    NOT = 4
+GateInputCount = {
+    GateType.INPUT: 0,
+    GateType.OUTPUT: 1,
+    GateType.AND: 2,
+    GateType.OR: 2,
+    GateType.NOT: 1,
+}
+GateStrings = {
+    GateType.INPUT: "IN",
+    GateType.OUTPUT: "OUT",
+    GateType.AND: "AND",
+    GateType.OR:  "OR",
+    GateType.NOT: "NOT",
+}
+
 class Node:
-    # GUI (probably should place this elsewhere)
-    xpos: int
-    ypos: int
-    # Logic
-    output_nodes: list
-    input_nodes: list
+    outputNodes: list
+    inputNodes: list
     state: bool
     INPUT_COUNT = 0
+    GATE_TYPE: GateType
 
     # Constructor
     def __init__(self, xpos: int, ypos: int) -> None:
         self.xpos = xpos
         self.ypos = ypos
-        self.input_nodes = [None] * self.INPUT_COUNT
-        self.output_nodes = []
+        self.inputNodes = [None] * self.INPUT_COUNT
+        self.outputNodes = []
         self.state = False
         return
 
@@ -25,21 +45,21 @@ class Node:
 
     # Add a next node (receives this nodes output)
     def add_output_nodes(self, node: 'Node') -> None:
-        self.output_nodes.append(node)
+        self.outputNodes.append(node)
         return
 
     # Add a next node (receives this nodes output)
     def add_input_node_at(self, node: 'Node', index:int) -> None:
         if index > self.INPUT_COUNT:
             return
-        self.input_nodes[index] = node
+        self.inputNodes[index] = node
         return
 
     # Update boolean (output) state of gate
     def update_state(self) -> None:
         if self is None: return
         inputs = []
-        for input in self.input_nodes:
+        for input in self.inputNodes:
             if input is None:
                 inputs.append(False)
             else:
@@ -51,7 +71,8 @@ class Node:
         return False # placeholder value
 
 class Input(Node):
-    INPUT_COUNT = 0
+    GATE_TYPE = GateType.INPUT
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
     def update_state(self, *inputs: bool) -> None:
         if len(inputs) != 1:
             return
@@ -59,22 +80,26 @@ class Input(Node):
         return
 
 class Output(Node):
-    INPUT_COUNT = 1
+    GATE_TYPE = GateType.OUTPUT
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
     def logic_fn(self, *inputs: bool) -> bool:
         return inputs[0]
 
 class OR(Node):
-    INPUT_COUNT = 2
+    GATE_TYPE = GateType.OR
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
     def logic_fn(self, *inputs: bool) -> bool:
         return inputs[0] | inputs[1]
 
 class AND(Node):
-    INPUT_COUNT = 2
+    GATE_TYPE = GateType.AND
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
     def logic_fn(self, *inputs: bool) -> bool:
         return inputs[0] & inputs[1]
 
 class NOT(Node):
-    INPUT_COUNT = 1
+    GATE_TYPE = GateType.NOT
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
     def logic_fn(self, *inputs: bool) -> bool:
         return (not inputs[0])
 
@@ -91,7 +116,7 @@ def recursive_update(start_node: 'Node') -> None:
             return
         print(type(node), ": ", node.state)
         node.update_state()
-        for next_node in node.output_nodes:
+        for next_node in node.outputNodes:
             recursive_update_single(next_node)
         return
 

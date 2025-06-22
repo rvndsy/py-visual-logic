@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from logic_gates import *
 from window import *
+import sys
 
 if __name__ == "__main__":
     input1 = Input(0, 0)
