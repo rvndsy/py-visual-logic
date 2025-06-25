@@ -104,6 +104,7 @@ class AND(Node):
 class NOT(Node):
     GATE_TYPE = GateType.NOT
     INPUT_COUNT = GateInputCount[GATE_TYPE]
+    state = True
     def logicFn(self, *inputs: bool) -> bool:
         return (not inputs[0])
 

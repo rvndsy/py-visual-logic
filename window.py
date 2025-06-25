@@ -115,7 +115,7 @@ class ConnectionLine(QGraphicsLineItem):
 
 class ConnectionPoint(QGraphicsEllipseItem):
     DIAMETER = 10
-    lines: list
+    lines: list[ConnectionLine]
     pointBrush = QBrush(QColor("black"))
 
     isInput: bool
@@ -138,26 +138,34 @@ class ConnectionPoint(QGraphicsEllipseItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, enabled=False)
 
     def addLine(self, lineItem: ConnectionLine):
-        for existing in self.lines:
-            if existing.connectionPoints() == lineItem.connectionPoints():
+        print("Adding line")
+        for existingLine in self.lines:
+            existingPoints = existingLine.connectionPoints()
+            lineItemPoints = lineItem.connectionPoints()
+            if existingPoints == lineItemPoints or existingPoints[::-1] == lineItemPoints: # can be flipped if line started from the other end
                 # another line with the same connection points already exists
+                print("\tNope because already exists: ", existingLine.connectionPoints(), "  ", lineItem.connectionPoints())
                 return False
         endPoint = lineItem.connectionPoints()[1]
         if endPoint:
             # can't connect out to out and in to in
             if endPoint.isInput == self.isInput:
+                print("\tNope because same type of put")
                 return False
             endPoint.lines.append(lineItem)
         self.lines.append(lineItem)
+        print("\tYes")
         return True
 
     def removeLine(self, lineItem):
-        for existing in self.lines:
-            if existing.connectionPoints() == lineItem.connectionPoints():
+        for existingLine in self.lines:
+            existingPoints = existingLine.connectionPoints()
+            lineItemPoints = lineItem.connectionPoints()
+            if existingPoints == lineItemPoints or existingPoints[::-1] == lineItemPoints: # can be flipped if line started from the other end
                 scene = self.scene()
                 if scene:
-                    scene.removeItem(existing)
-                    self.lines.remove(existing)
+                    scene.removeItem(existingLine)
+                    self.lines.remove(existingLine)
                     return True
         return False
 
@@ -245,21 +253,42 @@ class Scene(QGraphicsScene):
             if not isinstance(item, ConnectionLine):
                 mask.addPath(item.shape().translated(item.scenePos()))
 
+    def connectionLineAt(self, pos) -> ConnectionLine | None:
+        mask = QPainterPath()
+        mask.setFillRule(Qt.FillRule.WindingFill)
+        for item in self.items(pos):
+            if mask.contains(pos):
+                # ignore objects hidden by others
+                return None
+            if isinstance(item, ConnectionLine):
+               return item
+
     def mousePressEvent(self, event):
-        if event is not None and event.button() == Qt.MouseButton.LeftButton:
+        print("[MOUSE] Pressed")
+        if event and event.button() == Qt.MouseButton.LeftButton:
+
             cursorConnectionPoint = self.connectionPointAt(event.scenePos())
+            connectionLineAt = self.connectionLineAt(event.scenePos())
+            # create a new line
             if cursorConnectionPoint:
                 self.startConnectionPoint = cursorConnectionPoint
                 self.newConnectionLine = ConnectionLine(cursorConnectionPoint, event.scenePos())
                 self.addItem(self.newConnectionLine)
                 return
+            # destroy an existing line
+            elif connectionLineAt:
+                points = connectionLineAt.connectionPoints()
+                if points[0] and points[1]:
+                    self.disconnectPoints(points[0], points[1], connectionLineAt)
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        #print("[MOUSE] Move\n\n")
         if event and self.newConnectionLine:
             item = self.connectionPointAt(event.scenePos())
             if (item and item != self.startConnectionPoint and self.startConnectionPoint):
-                    cursorPos = item.scenePos()
+                cursorPos = item.scenePos()
             else:
                 cursorPos = event.scenePos()
             self.newConnectionLine.setP2(cursorPos)
@@ -267,24 +296,86 @@ class Scene(QGraphicsScene):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        print("[MOUSE] Release")
         if event and self.newConnectionLine:
             endConnectionPoint = self.connectionPointAt(event.scenePos())
-            if self.startConnectionPoint and endConnectionPoint and endConnectionPoint != self.startConnectionPoint:
-                self.newConnectionLine.setEnd(endConnectionPoint)
-                if self.startConnectionPoint.addLine(self.newConnectionLine):
-                    self.connect(self.startConnectionPoint, endConnectionPoint)
-                    endConnectionPoint.addLine(self.newConnectionLine)
-                else:
-                    # delete the connection if it exists; remove the following
-                    # line if this feature is not required
-                    self.removeConnection(self.startConnectionPoint, endConnectionPoint)
-                    self.startConnectionPoint.removeLine(self.newConnectionLine)
-                    self.removeItem(self.newConnectionLine)
+
+            if endConnectionPoint and self.startConnectionPoint and endConnectionPoint != self.startConnectionPoint and endConnectionPoint.isInput != self.startConnectionPoint.isInput:
+                if not self.connectPoints(self.startConnectionPoint, endConnectionPoint, self.newConnectionLine):
+                    # delete the connection if it exists; remove the following line if this feature is not required
+                    self.disconnectPoints(self.startConnectionPoint, endConnectionPoint, self.newConnectionLine)
             else:
                 self.removeItem(self.newConnectionLine)
         self.startConnectionPoint = self.newConnectionLine = None
         super().mouseReleaseEvent(event)
-        inputPoint: ConnectionPoint
+
+    def disconnectPoints(self, p1: ConnectionPoint, p2: ConnectionPoint, givenLine: ConnectionLine | None) -> None:
+        commonLine = self.getCommonLine(p1, p2)
+        if commonLine:
+            if p1.logicGateNode and p2.logicGateNode:
+                self.disconnectLogic(p1, p2)
+            p1.removeLine(commonLine)
+            p2.removeLine(commonLine)
+            self.removeItem(commonLine)
+        if commonLine != givenLine and givenLine:
+            givenLinePoints = givenLine.connectionPoints()
+            if givenLinePoints:
+                if givenLinePoints[0]:
+                    givenLinePoints[0].removeLine(givenLine)
+                if givenLinePoints[1]:
+                    givenLinePoints[1].removeLine(givenLine)
+            self.removeItem(givenLine)
+        return
+
+    def arePointsConnected(self, p1: ConnectionPoint, p2: ConnectionPoint) -> bool:
+        commonLine = self.getCommonLine(p1, p2)
+        if commonLine:
+            return True
+        return False
+
+    def doPointsBelongToLine(self, p1: ConnectionPoint, p2: ConnectionPoint, givenLine: ConnectionLine) -> bool:
+        commonLine = self.getCommonLine(p1, p2)
+        return commonLine == givenLine
+
+    def getCommonLine(self, p1: ConnectionPoint, p2: ConnectionPoint) -> ConnectionLine | None:
+        for line1 in p1.lines:
+            for line2 in p2.lines:
+                if line1 == line2:
+                    return line1
+        return None
+
+    def connectPoints(self, p1: ConnectionPoint, p2: ConnectionPoint, givenLine: ConnectionLine | None) -> bool:
+        if not p2 or not p1 or p2 == p1 or p2.isInput == p1.isInput:
+            print("[ConnectPoints()] Initial check failed")
+            return False
+
+        if self.getCommonLine(p1, p2):
+            print("[ConnectPoints()] Points and line are already connected")
+            return False
+
+        print("[ConnectPoints()] Connecting")
+        if not givenLine:
+            print("[ConnectPoints()] Creating a new line")
+            givenLine = ConnectionLine(p1, p2)
+        if p1.addLine(givenLine) and p2.addLine(givenLine):
+            print("[ConnectPoints()] Line already exists. Connecting start and end")
+            if not givenLine.start:
+                givenLine.setStart(p1)
+            if not givenLine.end:
+                givenLine.setEnd(p2)
+        else:
+            print("[ConnectPoints()] Could not add line to start or end")
+            return False
+        self.addItem(givenLine)
+
+        if p1.logicGateNode and p2.logicGateNode:
+            print("[ConnectPoints()] Connecting logic")
+            self.connectLogic(p1, p2)
+        else: 
+            print("[ConnectPoints()] start or end does not have a logic gate attached")
+            return False
+        print("[ConnectPoints()] All good!")
+        return True
 
     def findInputOutput(self, p1: ConnectionPoint, p2: ConnectionPoint) -> tuple[ConnectionPoint, ConnectionPoint]:
         if p1.isInput:
@@ -292,7 +383,7 @@ class Scene(QGraphicsScene):
         else:
             return (p2, p1)
 
-    def connect(self, p1: ConnectionPoint, p2: ConnectionPoint) -> None:
+    def connectLogic(self, p1: ConnectionPoint, p2: ConnectionPoint) -> None:
         sortedConnections = self.findInputOutput(p1, p2)
         inputPoint = sortedConnections[0]
         outputPoint = sortedConnections[1]
@@ -304,7 +395,7 @@ class Scene(QGraphicsScene):
         printAllStates(self.draggableNodeList)
         return
 
-    def removeConnection(self, p1: ConnectionPoint, p2: ConnectionPoint) -> None:
+    def disconnectLogic(self, p1: ConnectionPoint, p2: ConnectionPoint) -> None:
         sortedConnections = self.findInputOutput(p1, p2)
         inputPoint = sortedConnections[0]
         outputPoint = sortedConnections[1]
@@ -321,12 +412,8 @@ class Scene(QGraphicsScene):
 
 
 
-
-
-
 def printAllStates(draggableNodeList: list[DraggableNode | None]) -> None:
-    print()
-    print("==== STATES ====")
+    print("\n==== STATES ====")
     for draggableNode in draggableNodeList:
         if draggableNode and draggableNode.logicGateNode:
             node = draggableNode.logicGateNode
@@ -334,9 +421,12 @@ def printAllStates(draggableNodeList: list[DraggableNode | None]) -> None:
             print("  Inputs:")
             for singleInputList in node.inputNodes:
                 for input in singleInputList:
-                    if input: print("\t", input, " is ", input.state)
+                    if input:
+                        print("\t", input)
             print("  Outputs:")
             for singleOutputList in node.outputNodes:
                 for output in singleOutputList:
-                    if output: print("\t", output, " is ", output.state)
+                    if output:
+                        print("\t", output)
+        print("")
     return
