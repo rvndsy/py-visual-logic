@@ -1,5 +1,5 @@
 from logic_gates import *
-from typing import Dict
+import uuid
 from PyQt6.QtCore import Qt, QSize, QLineF, QRectF
 from PyQt6.QtGui import ( 
     QAction,
@@ -9,23 +9,21 @@ from PyQt6.QtGui import (
     QColor,
     QBrush,
     QPainterPath,
+    QIcon,
 )
 from PyQt6.QtWidgets import (
-    QApplication,
+    QGraphicsTextItem,
     QMainWindow,
-    QLabel,
-    QWidget,
     QToolBar,
 
 )
 from PyQt6.QtWidgets import (
     QGraphicsScene,
     QGraphicsView,
-    QGraphicsRectItem,
     QGraphicsItem,
-    QGraphicsPixmapItem,
     QGraphicsLineItem,
     QGraphicsEllipseItem,
+    QGraphicsRectItem,
 )
 
 PIXMAP_FILES_DICT = {
@@ -41,7 +39,7 @@ class Window(QMainWindow):
         super().__init__()
         self.setWindowTitle("PyQt App")
 
-        self.scene = Scene(0, 0, 400, 400)
+        self.scene = Scene(-50, -50, 800, 800)
 
         self.scene.addNodeItem(DraggableNode(GateType.NOT, 100, 100))
         self.scene.addNodeItem(DraggableNode(GateType.OR, 200, 300))
@@ -49,21 +47,36 @@ class Window(QMainWindow):
         self.scene.addNodeItem(DraggableNode(GateType.INPUT, 150, 50, state=True))
         self.scene.addNodeItem(DraggableNode(GateType.OUTPUT, 50, 150))
 
-        toolbar = QToolBar(parent=self)
-        toolbar.setIconSize(QSize(16, 16))
-        self.addToolBar(toolbar)
+        toolbar1 = QToolBar(parent=self)
+        toolbar1.setIconSize(QSize(16, 16))
+        self.addToolBar(toolbar1)
         openFileBtn = QAction("Open file", self)
         openFileBtn.setStatusTip("Open file")
         openFileBtn.triggered.connect(self.toolbarOpenFileBtnClicked)
-        toolbar.addAction(openFileBtn)
+        toolbar1.addAction(openFileBtn)
+
+        logicGateToolbar = QToolBar(parent=self)
+        logicGateToolbar.setIconSize(QSize(16, 16))
+        self.addToolBar(logicGateToolbar)
+
+        for gate_type in GateType:
+            icon = QIcon(PIXMAP_FILES_DICT[gate_type])
+            action = QAction(icon, gate_type.name.capitalize(), self)
+            action.triggered.connect(lambda checked, gt=gate_type: self.logicGateBtnClicked(gt))
+            logicGateToolbar.addAction(action)
+
 
         view = QGraphicsView(self.scene)
         view.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setCentralWidget(view)
         return
-    
+
     def toolbarOpenFileBtnClicked(self, s) -> None:
         print("click ", s)
+
+    def logicGateBtnClicked(self, gate_type):
+        print(f"Gate button clicked: {gate_type}")
+        self.scene.addNodeItem(DraggableNode(gate_type, int(self.scene.width()/2), int(self.scene.height()/2)))
 
     #def updateScene(self):
     #    for item in self.scene.items():
@@ -179,15 +192,19 @@ class DraggableNode(QGraphicsItem):
     pixmap: QPixmap
     logicGateNode: Node
     gateType: GateType
-    inputConnectionCount: int
     outputPoints: list[ConnectionPoint]
     inputPoints: list[ConnectionPoint]
+    stateIndicator: QGraphicsTextItem
 
     def __init__(self, gateType: GateType, x: int , y: int, state: bool = False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #self.pen = QPen(Qt.GlobalColor.black, 2)
         #self.connectionBrush = QBrush(QColor(214, 13, 36))
-        self.rect = QRectF(0, 0, 100, 100)
+        self.outputPoints = []
+        self.inputPoints = []
+        self.pixmap = QPixmap(PIXMAP_FILES_DICT[gateType])
+
+        self.rect = QRectF(0, 0, float(self.pixmap.width()), float(self.pixmap.height()))
         self.setFlags(self.GraphicsItemFlag.ItemIsMovable)
         self.setPos(x, y)
 
@@ -195,17 +212,21 @@ class DraggableNode(QGraphicsItem):
         self.logicGateNode = GateClass[gateType]()
         self.logicGateNode.state = state
 
-        self.outputPoints = []
-        self.inputPoints = []
-        self.pixmap = QPixmap(PIXMAP_FILES_DICT[gateType])
+        if gateType == GateType.INPUT:
+            self.stateIndicator = QGraphicsTextItem("1", self)
+            self.stateIndicator.setX(self.boundingRect().center().x() - self.stateIndicator.boundingRect().center().x() - 12)
+            self.stateIndicator.setY(self.boundingRect().center().y() - self.stateIndicator.boundingRect().center().y())
+        if gateType == GateType.OUTPUT:
+            self.stateIndicator = QGraphicsTextItem("0", self)
+            self.stateIndicator.setX(self.boundingRect().center().x() - self.stateIndicator.boundingRect().center().x() + 8)
+            self.stateIndicator.setY(self.boundingRect().center().y() - self.stateIndicator.boundingRect().center().y())
 
-        self.inputConnectionCount = GateInputCount[gateType]
-        if self.inputConnectionCount == 1:
+        if GateInputCount[gateType] == 1:
             connectionPoint = ConnectionPoint(self, True, 0)
             self.inputPoints.append(connectionPoint)
             connectionPoint.setX(0 + ConnectionPoint.DIAMETER)
             connectionPoint.setY(self.getCenterY())
-        if self.inputConnectionCount == 2:
+        if GateInputCount[gateType] == 2:
             connectionPoint = ConnectionPoint(self, True, 0)
             self.inputPoints.append(connectionPoint)
             connectionPoint.setX(0 + ConnectionPoint.DIAMETER)
@@ -229,13 +250,30 @@ class DraggableNode(QGraphicsItem):
         if painter is not None:
             painter.drawPixmap(0, 0, self.pixmap)
 
-
     def boundingRect(self):
         return QRectF(self.pixmap.rect())
+
+    def updateState(self, state: bool) -> None:
+        self.logicGateNode.updateState(state)
+        self.setStateIndicator(self.logicGateNode.state)
+        return
+
+    def setStateIndicator(self, state: bool) -> None:
+        if not self.stateIndicator:
+            return
+        if state:
+            self.stateIndicator.setPlainText("1")
+        else:
+            self.stateIndicator.setPlainText("0")
+        return
+
+    def getState(self) -> bool:
+        return self.logicGateNode.state
 
 class Scene(QGraphicsScene):
     startConnectionPoint = newConnectionLine = None
     draggableNodeList: list[DraggableNode | None] = []
+
     def addNodeItem(self, item: DraggableNode | None) -> None:
         super().addItem(item)
         self.draggableNodeList.append(item)
@@ -263,12 +301,21 @@ class Scene(QGraphicsScene):
             if isinstance(item, ConnectionLine):
                return item
 
+    def draggableNodeAt(self, pos) -> DraggableNode | None:
+        mask = QPainterPath()
+        mask.setFillRule(Qt.FillRule.WindingFill)
+        for item in self.items(pos):
+            if mask.contains(pos):
+                # ignore objects hidden by others
+                return None
+            if isinstance(item, DraggableNode):
+               return item
+
     def mousePressEvent(self, event):
         print("[MOUSE] Pressed")
         if event and event.button() == Qt.MouseButton.LeftButton:
-
             cursorConnectionPoint = self.connectionPointAt(event.scenePos())
-            connectionLineAt = self.connectionLineAt(event.scenePos())
+            cursorConnectionLine = self.connectionLineAt(event.scenePos())
             # create a new line
             if cursorConnectionPoint:
                 self.startConnectionPoint = cursorConnectionPoint
@@ -276,10 +323,12 @@ class Scene(QGraphicsScene):
                 self.addItem(self.newConnectionLine)
                 return
             # destroy an existing line
-            elif connectionLineAt:
-                points = connectionLineAt.connectionPoints()
+            elif cursorConnectionLine:
+                points = cursorConnectionLine.connectionPoints()
                 if points[0] and points[1]:
-                    self.disconnectPoints(points[0], points[1], connectionLineAt)
+                    print("[MOUSE PRESSED] ", points[0])
+                    print("[MOUSE PRESSED] ", points[1])
+                    self.disconnectPoints(points[0], points[1], cursorConnectionLine)
 
         super().mousePressEvent(event)
 
@@ -297,15 +346,34 @@ class Scene(QGraphicsScene):
 
     def mouseReleaseEvent(self, event):
         print("[MOUSE] Release")
-        if event and self.newConnectionLine:
+        if not event:
+            return
+        if event.button() == Qt.MouseButton.LeftButton:
             endConnectionPoint = self.connectionPointAt(event.scenePos())
+            cursorDraggableNode = self.draggableNodeAt(event.scenePos())
 
-            if endConnectionPoint and self.startConnectionPoint and endConnectionPoint != self.startConnectionPoint and endConnectionPoint.isInput != self.startConnectionPoint.isInput:
+            if self.newConnectionLine and endConnectionPoint and self.startConnectionPoint and endConnectionPoint != self.startConnectionPoint and endConnectionPoint.isInput != self.startConnectionPoint.isInput:
                 if not self.connectPoints(self.startConnectionPoint, endConnectionPoint, self.newConnectionLine):
                     # delete the connection if it exists; remove the following line if this feature is not required
+                    print("Something went wrong...\n\n\n")
+
                     self.disconnectPoints(self.startConnectionPoint, endConnectionPoint, self.newConnectionLine)
             else:
                 self.removeItem(self.newConnectionLine)
+
+            if cursorDraggableNode and cursorDraggableNode.gateType == GateType.INPUT:
+                cursorDraggableNode.updateState(not cursorDraggableNode.getState())
+                recursiveUpdate(cursorDraggableNode.logicGateNode)
+                printAllStates(self.draggableNodeList)
+                self.updateAllInputsOutputs()
+
+        if event.button() == Qt.MouseButton.RightButton:
+            cursorDraggableNode = self.draggableNodeAt(event.scenePos())
+
+            if cursorDraggableNode:
+                self.deleteDraggableNode(cursorDraggableNode)
+
+
         self.startConnectionPoint = self.newConnectionLine = None
         super().mouseReleaseEvent(event)
 
@@ -393,6 +461,7 @@ class Scene(QGraphicsScene):
         connectOutToInAt(logicGateOutput, logicGateInput, inputPoint.orderIndex)
         recursiveUpdate(logicGateOutput)
         printAllStates(self.draggableNodeList)
+        self.updateAllInputsOutputs()
         return
 
     def disconnectLogic(self, p1: ConnectionPoint, p2: ConnectionPoint) -> None:
@@ -407,10 +476,31 @@ class Scene(QGraphicsScene):
         recursiveUpdate(logicGateOutput)
         recursiveUpdate(logicGateInput)
         printAllStates(self.draggableNodeList)
+        self.updateAllInputsOutputs()
 
         return
 
+    def updateAllInputsOutputs(self) -> None:
+        for draggableNode in self.draggableNodeList:
+            if not draggableNode:
+                continue
+            if draggableNode.gateType == GateType.INPUT or draggableNode.gateType == GateType.OUTPUT:
+                draggableNode.updateState(draggableNode.getState())
 
+    def deleteDraggableNode(self, draggableNode: DraggableNode) -> None:
+        if not draggableNode:
+            return
+        for point in draggableNode.outputPoints + draggableNode.inputPoints:
+            for line in point.lines:
+                if line.start and line.end:
+                    self.disconnectPoints(line.start, line.end, line)
+                if line:
+                    self.removeItem(line)
+            point = None
+
+        self.removeItem(draggableNode)
+        self.draggableNodeList.remove(draggableNode)
+        return
 
 def printAllStates(draggableNodeList: list[DraggableNode | None]) -> None:
     print("\n==== STATES ====")

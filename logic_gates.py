@@ -55,7 +55,7 @@ class Node:
         return
 
     # Update boolean (output) state of gate
-    def updateState(self) -> None:
+    def updateState(self, *inputs: bool) -> None:
         inputStates = []
         for singleInputList in self.inputNodes:
             singleInputListOrState = False
