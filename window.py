@@ -52,7 +52,7 @@ class Window(QMainWindow):
         super().__init__()
         self.setWindowTitle("PyQt App")
 
-        self.scene = Scene(0, 0, 800, 800)
+        self.scene = Scene(0, 0, 0, 0)
 
         actionToolbar = QToolBar(parent=self)
         actionToolbar.setIconSize(QSize(16, 16))
