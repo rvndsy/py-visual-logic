@@ -1,0 +1,159 @@
+{
+    "nodes": [
+        {
+            "id": "a7785733-6621-474f-9b5a-b6eadf40907d",
+            "type": "NAND",
+            "x": 305.0,
+            "y": 370.0,
+            "state": false,
+            "inputs": 2,
+            "outputs": 2
+        },
+        {
+            "id": "aa0cf506-3436-4f3c-bb5b-59a5e60fd4ec",
+            "type": "NAND",
+            "x": 403.0,
+            "y": 337.0,
+            "state": false,
+            "inputs": 2,
+            "outputs": 2
+        },
+        {
+            "id": "9ea8f7c1-4b76-467f-a844-708242bc998c",
+            "type": "NAND",
+            "x": 401.0,
+            "y": 405.0,
+            "state": false,
+            "inputs": 2,
+            "outputs": 2
+        },
+        {
+            "id": "5a88f468-4473-4f64-95f7-d234e29cb474",
+            "type": "NAND",
+            "x": 499.0,
+            "y": 374.0,
+            "state": false,
+            "inputs": 2,
+            "outputs": 2
+        },
+        {
+            "id": "932fea14-abf7-4416-8081-28216d245a6a",
+            "type": "OUTPUT",
+            "x": 631.0,
+            "y": 379.0,
+            "state": false,
+            "inputs": 1,
+            "outputs": 1
+        },
+        {
+            "id": "99aa66d0-92ee-494f-aa9d-09802ae1f8d6",
+            "type": "INPUT",
+            "x": 218.0,
+            "y": 418.0,
+            "state": false,
+            "inputs": 0,
+            "outputs": 0
+        },
+        {
+            "id": "60b66c4d-7985-4eb1-a4ce-56c7bc935faf",
+            "type": "INPUT",
+            "x": 218.0,
+            "y": 337.0,
+            "state": false,
+            "inputs": 0,
+            "outputs": 0
+        },
+        {
+            "id": "cfb0b4c8-3640-40b6-ac24-83c762a9738d",
+            "type": "XOR",
+            "x": 409.0,
+            "y": 210.0,
+            "state": false,
+            "inputs": 2,
+            "outputs": 2
+        },
+        {
+            "id": "9afa6299-0d63-4c1b-9805-63470eef9915",
+            "type": "OUTPUT",
+            "x": 631.0,
+            "y": 217.0,
+            "state": false,
+            "inputs": 1,
+            "outputs": 1
+        }
+    ],
+    "connections": [
+        {
+            "from_node": "a7785733-6621-474f-9b5a-b6eadf40907d",
+            "from_output": 0,
+            "to_node": "aa0cf506-3436-4f3c-bb5b-59a5e60fd4ec",
+            "to_input": 1
+        },
+        {
+            "from_node": "a7785733-6621-474f-9b5a-b6eadf40907d",
+            "from_output": 0,
+            "to_node": "9ea8f7c1-4b76-467f-a844-708242bc998c",
+            "to_input": 0
+        },
+        {
+            "from_node": "aa0cf506-3436-4f3c-bb5b-59a5e60fd4ec",
+            "from_output": 0,
+            "to_node": "5a88f468-4473-4f64-95f7-d234e29cb474",
+            "to_input": 0
+        },
+        {
+            "from_node": "9ea8f7c1-4b76-467f-a844-708242bc998c",
+            "from_output": 0,
+            "to_node": "5a88f468-4473-4f64-95f7-d234e29cb474",
+            "to_input": 1
+        },
+        {
+            "from_node": "5a88f468-4473-4f64-95f7-d234e29cb474",
+            "from_output": 0,
+            "to_node": "932fea14-abf7-4416-8081-28216d245a6a",
+            "to_input": 0
+        },
+        {
+            "from_node": "99aa66d0-92ee-494f-aa9d-09802ae1f8d6",
+            "from_output": 0,
+            "to_node": "cfb0b4c8-3640-40b6-ac24-83c762a9738d",
+            "to_input": 1
+        },
+        {
+            "from_node": "99aa66d0-92ee-494f-aa9d-09802ae1f8d6",
+            "from_output": 0,
+            "to_node": "a7785733-6621-474f-9b5a-b6eadf40907d",
+            "to_input": 1
+        },
+        {
+            "from_node": "99aa66d0-92ee-494f-aa9d-09802ae1f8d6",
+            "from_output": 0,
+            "to_node": "9ea8f7c1-4b76-467f-a844-708242bc998c",
+            "to_input": 1
+        },
+        {
+            "from_node": "60b66c4d-7985-4eb1-a4ce-56c7bc935faf",
+            "from_output": 0,
+            "to_node": "cfb0b4c8-3640-40b6-ac24-83c762a9738d",
+            "to_input": 0
+        },
+        {
+            "from_node": "60b66c4d-7985-4eb1-a4ce-56c7bc935faf",
+            "from_output": 0,
+            "to_node": "a7785733-6621-474f-9b5a-b6eadf40907d",
+            "to_input": 0
+        },
+        {
+            "from_node": "60b66c4d-7985-4eb1-a4ce-56c7bc935faf",
+            "from_output": 0,
+            "to_node": "aa0cf506-3436-4f3c-bb5b-59a5e60fd4ec",
+            "to_input": 0
+        },
+        {
+            "from_node": "cfb0b4c8-3640-40b6-ac24-83c762a9738d",
+            "from_output": 0,
+            "to_node": "9afa6299-0d63-4c1b-9805-63470eef9915",
+            "to_input": 0
+        }
+    ]
+}
