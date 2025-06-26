@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QToolBar,
     QFileDialog,
+    QMenu,
+    QToolButton,
 )
 from PyQt6.QtWidgets import (
     QGraphicsScene,
@@ -23,7 +25,6 @@ from PyQt6.QtWidgets import (
     QGraphicsItem,
     QGraphicsLineItem,
     QGraphicsEllipseItem,
-    QGraphicsRectItem,
 )
 
 PIXMAP_FILES_DICT = {
@@ -42,25 +43,27 @@ class Window(QMainWindow):
         super().__init__()
         self.setWindowTitle("PyQt App")
 
-        self.scene = Scene(-50, -50, 800, 800)
+        self.scene = Scene(0, 0, 800, 800)
 
-        self.scene.addNodeItem(DraggableNode(GateType.NOT, 100, 100))
-        self.scene.addNodeItem(DraggableNode(GateType.OR, 200, 300))
-        self.scene.addNodeItem(DraggableNode(GateType.AND, 100, 200))
-        self.scene.addNodeItem(DraggableNode(GateType.INPUT, 150, 50, state=True))
-        self.scene.addNodeItem(DraggableNode(GateType.OUTPUT, 50, 150))
-
-        toolbar1 = QToolBar(parent=self)
-        toolbar1.setIconSize(QSize(16, 16))
-        self.addToolBar(toolbar1)
-        openFileBtn = QAction("Save", self)
-        openFileBtn.setStatusTip("Save")
+        actionToolbar = QToolBar(parent=self)
+        actionToolbar.setIconSize(QSize(16, 16))
+        self.addToolBar(actionToolbar)
+        openFileBtn = QAction("Save file", self)
         openFileBtn.triggered.connect(self.toolbarSaveFileBtnClicked)
-        toolbar1.addAction(openFileBtn)
-        loadFileBtn = QAction("Load", self)
-        loadFileBtn.setStatusTip("Load")
+        actionToolbar.addAction(openFileBtn)
+        loadFileBtn = QAction("Load file", self)
         loadFileBtn.triggered.connect(self.toolbarLoadFileBtnClicked)
-        toolbar1.addAction(loadFileBtn)
+        actionToolbar.addAction(loadFileBtn)
+
+        exampleMenuBtn = QToolButton()
+        exampleMenuBtn.setText("Load example")
+        exampleMenuBtn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        exampleMenuBtn.setMenu(ExampleMenu(scene=self.scene))
+        actionToolbar.addWidget(exampleMenuBtn)
+
+        clearSceneBtn = QAction("Clear scene", self)
+        clearSceneBtn.triggered.connect(lambda: self.scene.clear())
+        actionToolbar.addAction(clearSceneBtn)
 
         logicGateToolbar = QToolBar(parent=self)
         logicGateToolbar.setIconSize(QSize(64, 64))
@@ -184,23 +187,19 @@ class ConnectionPoint(QGraphicsEllipseItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, enabled=False)
 
     def addLine(self, lineItem: ConnectionLine):
-        print("Adding line")
         for existingLine in self.lines:
             existingPoints = existingLine.connectionPoints()
             lineItemPoints = lineItem.connectionPoints()
             if existingPoints == lineItemPoints or existingPoints[::-1] == lineItemPoints: # can be flipped if line started from the other end
                 # another line with the same connection points already exists
-                print("\tNope because already exists: ", existingLine.connectionPoints(), "  ", lineItem.connectionPoints())
                 return False
         endPoint = lineItem.connectionPoints()[1]
         if endPoint:
             # can't connect out to out and in to in
             if endPoint.isInput == self.isInput:
-                print("\tNope because same type of put")
                 return False
             endPoint.lines.append(lineItem)
         self.lines.append(lineItem)
-        print("\tYes")
         return True
 
     def removeLine(self, lineItem):
@@ -598,8 +597,6 @@ def saveNodeGraph(scene: Scene, filename):
         json.dump(data, f, indent=4)
 
 def loadNodeGraph(scene: Scene, filename):
-    import json
-
     with open(filename, "r") as f:
         data = json.load(f)
 
@@ -633,3 +630,19 @@ def loadNodeGraph(scene: Scene, filename):
         inputPoint = toNode.inputPoints[toInputIndex]
 
         scene.connectPoints(outputPoint, inputPoint, givenLine=None)
+
+
+class ExampleMenu(QMenu):
+    scene: Scene
+
+    def __init__(self, scene: Scene, parent=None):
+        super().__init__(parent)
+
+        self.scene = scene
+
+        self.addAction("8-bit full adder", lambda: loadNodeGraph(self.scene, "./examples/8bit-adder.json"))
+        self.addAction("4-to-1 multiplexer", lambda: loadNodeGraph(self.scene, "./examples/4bit-multiplexer.json"))
+        self.addAction("XOR from NAND", lambda: loadNodeGraph(self.scene, "./examples/XOR-from-NAND.json"))
+        self.addAction("XOR from AND, NOT, OR", lambda: loadNodeGraph(self.scene, "./examples/XOR-from-AND-NOT-OR.json"))
+
+        return

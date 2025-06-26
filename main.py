@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from logic_gates import *
 from window import *
+from PyQt6.QtWidgets import QStyleFactory
 import sys
 
 if __name__ == "__main__":
@@ -39,7 +40,6 @@ if __name__ == "__main__":
     #print("Output:  ",output.state)
 
     app = QApplication(sys.argv)
-
     w = Window()
     w.show()
     sys.exit(app.exec())

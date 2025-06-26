@@ -132,6 +132,15 @@ class NAND(Node):
     def logicFn(self, *inputs: bool) -> bool:
         return not (inputs[0] and inputs[1])
 
+#class BUFFER(Node):
+#    GATE_TYPE = GateType.BUFFER
+#    INPUT_COUNT = GateInputCount[GATE_TYPE]
+#    delayedInputState: bool = False
+#    def logicFn(self, *inputs: bool) -> bool:
+#        self.state = self.delayedInputState
+#        self.delayedInputState = inputs[0]
+#        return self.state
+
 def connectOutToInAt(outputNode: 'Node', inputNode: 'Node', inputIndex: int = 0) -> None:
     outputNode.addOutputNode(inputNode)
     inputNode.addInputNodeAt(outputNode, inputIndex)
