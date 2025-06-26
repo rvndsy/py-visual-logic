@@ -1,5 +1,5 @@
 from logic_gates import *
-import uuid, json
+import uuid, json, sys, os
 from PyQt6.QtCore import Qt, QSize, QLineF, QRectF, QPointF
 from PyQt6.QtGui import ( 
     QAction,
@@ -27,15 +27,24 @@ from PyQt6.QtWidgets import (
     QGraphicsEllipseItem,
 )
 
+def resolvePath(path):
+    if getattr(sys, "frozen", False):
+        # If the 'frozen' flag is set, we are in bundled-app mode!
+        resolved_path = os.path.abspath(os.path.join(sys._MEIPASS, path))
+    else:
+        # Normal development mode. Use os.getcwd() or __file__ as appropriate in your case...
+        resolved_path = os.path.abspath(os.path.join(os.getcwd(), path))
+    return resolved_path
+
 PIXMAP_FILES_DICT = {
-    GateType.INPUT: "./symbols/IN.png",
-    GateType.OUTPUT: "./symbols/OUT.png",
-    GateType.AND: "./symbols/AND_ANSI.png",
-    GateType.OR:  "./symbols/OR_ANSI.png",
-    GateType.NOT: "./symbols/NOT_ANSI.png",
-    GateType.XOR: "./symbols/XOR_ANSI.png",
-    GateType.NOR: "./symbols/NOR_ANSI.png",
-    GateType.NAND: "./symbols/NAND_ANSI.png",
+    GateType.INPUT: resolvePath("symbols/IN.png"),
+    GateType.OUTPUT: resolvePath("symbols/OUT.png"),
+    GateType.AND: resolvePath("symbols/AND_ANSI.png"),
+    GateType.OR:  resolvePath("symbols/OR_ANSI.png"),
+    GateType.NOT: resolvePath("symbols/NOT_ANSI.png"),
+    GateType.XOR: resolvePath("symbols/XOR_ANSI.png"),
+    GateType.NOR: resolvePath("symbols/NOR_ANSI.png"),
+    GateType.NAND: resolvePath("symbols/NAND_ANSI.png"),
 }
 
 class Window(QMainWindow):
@@ -545,6 +554,7 @@ class Scene(QGraphicsScene):
         super().clear()
 
 
+
 def printAllStates(draggableNodeList: list[DraggableNode | None]) -> None:
     print("\n==== STATES ====")
     for draggableNode in draggableNodeList:
@@ -640,9 +650,9 @@ class ExampleMenu(QMenu):
 
         self.scene = scene
 
-        self.addAction("8-bit full adder", lambda: loadNodeGraph(self.scene, "./examples/8bit-adder.json"))
-        self.addAction("4-to-1 multiplexer", lambda: loadNodeGraph(self.scene, "./examples/4bit-multiplexer.json"))
-        self.addAction("XOR from NAND", lambda: loadNodeGraph(self.scene, "./examples/XOR-from-NAND.json"))
-        self.addAction("XOR from AND, NOT, OR", lambda: loadNodeGraph(self.scene, "./examples/XOR-from-AND-NOT-OR.json"))
+        self.addAction("8-bit full adder", lambda: loadNodeGraph(self.scene, resolvePath("examples/8bit-adder.json")))
+        self.addAction("4-to-1 multiplexer", lambda: loadNodeGraph(self.scene, resolvePath("examples/4bit-multiplexer.json")))
+        self.addAction("XOR from NAND", lambda: loadNodeGraph(self.scene, resolvePath("examples/XOR-from-NAND.json")))
+        self.addAction("XOR from AND, NOT, OR", lambda: loadNodeGraph(self.scene, resolvePath("examples/XOR-from-AND-NOT-OR.json")))
 
         return
