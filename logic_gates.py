@@ -6,12 +6,18 @@ class GateType(Enum):
     AND = 2
     OR = 3
     NOT = 4
+    XOR = 5
+    NOR = 6
+    NAND = 7
 GateInputCount = {
     GateType.INPUT: 0,
     GateType.OUTPUT: 1,
     GateType.AND: 2,
     GateType.OR: 2,
     GateType.NOT: 1,
+    GateType.XOR: 2,
+    GateType.NOR: 2,
+    GateType.NAND: 2,
 }
 
 class Node:
@@ -108,6 +114,24 @@ class NOT(Node):
     def logicFn(self, *inputs: bool) -> bool:
         return (not inputs[0])
 
+class XOR(Node):
+    GATE_TYPE = GateType.XOR
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
+    def logicFn(self, *inputs: bool) -> bool:
+        return inputs[0] ^ inputs[1]
+
+class NOR(Node):
+    GATE_TYPE = GateType.NOR
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
+    def logicFn(self, *inputs: bool) -> bool:
+        return not (inputs[0] or inputs[1])
+
+class NAND(Node):
+    GATE_TYPE = GateType.NAND
+    INPUT_COUNT = GateInputCount[GATE_TYPE]
+    def logicFn(self, *inputs: bool) -> bool:
+        return not (inputs[0] and inputs[1])
+
 def connectOutToInAt(outputNode: 'Node', inputNode: 'Node', inputIndex: int = 0) -> None:
     outputNode.addOutputNode(inputNode)
     inputNode.addInputNodeAt(outputNode, inputIndex)
@@ -140,11 +164,7 @@ GateClass = {
     GateType.AND: AND,
     GateType.OR: OR,
     GateType.NOT: NOT,
-}
-GateStrings = {
-    GateType.INPUT: "IN",
-    GateType.OUTPUT: "OUT",
-    GateType.AND: "AND",
-    GateType.OR:  "OR",
-    GateType.NOT: "NOT",
+    GateType.XOR: XOR,
+    GateType.NOR: NOR,
+    GateType.NAND: NAND,
 }

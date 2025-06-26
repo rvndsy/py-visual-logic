@@ -32,6 +32,9 @@ PIXMAP_FILES_DICT = {
     GateType.AND: "./symbols/AND_ANSI.png",
     GateType.OR:  "./symbols/OR_ANSI.png",
     GateType.NOT: "./symbols/NOT_ANSI.png",
+    GateType.XOR: "./symbols/XOR_ANSI.png",
+    GateType.NOR: "./symbols/NOR_ANSI.png",
+    GateType.NAND: "./symbols/NAND_ANSI.png",
 }
 
 class Window(QMainWindow):
@@ -60,8 +63,8 @@ class Window(QMainWindow):
         toolbar1.addAction(loadFileBtn)
 
         logicGateToolbar = QToolBar(parent=self)
-        logicGateToolbar.setIconSize(QSize(16, 16))
-        self.addToolBar(logicGateToolbar)
+        logicGateToolbar.setIconSize(QSize(64, 64))
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, logicGateToolbar)
 
         for gate_type in GateType:
             icon = QIcon(PIXMAP_FILES_DICT[gate_type])
@@ -304,6 +307,8 @@ class Scene(QGraphicsScene):
     startConnectionPoint = newConnectionLine = None
     draggableNodeList: list[DraggableNode | None] = []
 
+    wasMouseMoved: bool = False
+
     def addNodeItem(self, item: DraggableNode | None) -> None:
         super().addItem(item)
         self.draggableNodeList.append(item)
@@ -360,6 +365,7 @@ class Scene(QGraphicsScene):
                     print("[MOUSE PRESSED] ", points[1])
                     self.disconnectPoints(points[0], points[1], cursorConnectionLine)
 
+        self.wasMouseMoved = False
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -372,6 +378,7 @@ class Scene(QGraphicsScene):
                 cursorPos = event.scenePos()
             self.newConnectionLine.setP2(cursorPos)
             return
+        self.wasMouseMoved = True
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -391,7 +398,7 @@ class Scene(QGraphicsScene):
             else:
                 self.removeItem(self.newConnectionLine)
 
-            if cursorDraggableNode and cursorDraggableNode.gateType == GateType.INPUT:
+            if not self.wasMouseMoved and cursorDraggableNode and cursorDraggableNode.gateType == GateType.INPUT:
                 cursorDraggableNode.updateState(not cursorDraggableNode.getState())
                 recursiveUpdate(cursorDraggableNode.logicGateNode)
                 printAllStates(self.draggableNodeList)
@@ -403,7 +410,7 @@ class Scene(QGraphicsScene):
             if cursorDraggableNode:
                 self.deleteDraggableNode(cursorDraggableNode)
 
-
+        self.wasMouseMoved = False
         self.startConnectionPoint = self.newConnectionLine = None
         super().mouseReleaseEvent(event)
 
@@ -626,5 +633,3 @@ def loadNodeGraph(scene: Scene, filename):
         inputPoint = toNode.inputPoints[toInputIndex]
 
         scene.connectPoints(outputPoint, inputPoint, givenLine=None)
-        #outputPoint.lines.append(line)
-        #inputPoint.lines.append(line)
