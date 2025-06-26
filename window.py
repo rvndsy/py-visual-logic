@@ -1,6 +1,6 @@
 from logic_gates import *
-import uuid
-from PyQt6.QtCore import Qt, QSize, QLineF, QRectF
+import uuid, json
+from PyQt6.QtCore import Qt, QSize, QLineF, QRectF, QPointF
 from PyQt6.QtGui import ( 
     QAction,
     QPixmap,
@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QGraphicsTextItem,
     QMainWindow,
     QToolBar,
-
+    QFileDialog,
 )
 from PyQt6.QtWidgets import (
     QGraphicsScene,
@@ -50,10 +50,14 @@ class Window(QMainWindow):
         toolbar1 = QToolBar(parent=self)
         toolbar1.setIconSize(QSize(16, 16))
         self.addToolBar(toolbar1)
-        openFileBtn = QAction("Open file", self)
-        openFileBtn.setStatusTip("Open file")
-        openFileBtn.triggered.connect(self.toolbarOpenFileBtnClicked)
+        openFileBtn = QAction("Save", self)
+        openFileBtn.setStatusTip("Save")
+        openFileBtn.triggered.connect(self.toolbarSaveFileBtnClicked)
         toolbar1.addAction(openFileBtn)
+        loadFileBtn = QAction("Load", self)
+        loadFileBtn.setStatusTip("Load")
+        loadFileBtn.triggered.connect(self.toolbarLoadFileBtnClicked)
+        toolbar1.addAction(loadFileBtn)
 
         logicGateToolbar = QToolBar(parent=self)
         logicGateToolbar.setIconSize(QSize(16, 16))
@@ -71,8 +75,25 @@ class Window(QMainWindow):
         self.setCentralWidget(view)
         return
 
-    def toolbarOpenFileBtnClicked(self, s) -> None:
-        print("click ", s)
+    def toolbarSaveFileBtnClicked(self, s) -> None:
+        fileName = QFileDialog.getSaveFileName(
+            self,
+            caption="Save File",
+            #filter="JSON Files (*.json)",
+        )
+        print("Selected file: ", fileName)
+        if fileName[0] is not '':
+            saveNodeGraph(self.scene, fileName[0])
+
+    def toolbarLoadFileBtnClicked(self, s) -> None:
+        fileName = QFileDialog.getOpenFileName(
+            self,
+            caption="Open File",
+            #filter="JSON Files (*.json)",
+        )
+        print("Selected file: ", fileName)
+        if fileName[0] is not '':
+            loadNodeGraph(self.scene, fileName[0])
 
     def logicGateBtnClicked(self, gate_type):
         print(f"Gate button clicked: {gate_type}")
@@ -90,11 +111,14 @@ class ConnectionLine(QGraphicsLineItem):
     lineBrush = QBrush(QColor("red"))
     start: 'ConnectionPoint | None'
     end: 'ConnectionPoint | None'
-    def __init__(self, start, p2):
+    def __init__(self, p1: 'ConnectionPoint', p2: 'ConnectionPoint | QPointF'):
         super().__init__()
-        self.start = start
+        self.start = p1
         self.end = None
-        self._line = QLineF(start.scenePos(), p2)
+        if isinstance(p2, QPointF):
+            self._line = QLineF(p1.scenePos(), p2)
+        else:
+            self._line = QLineF(p1.scenePos(), p2.scenePos())
         self.setLine(self._line)
         self.setPenParams(self.LINE_COLOR, self.LINE_WIDTH)
 
@@ -125,6 +149,12 @@ class ConnectionLine(QGraphicsLineItem):
         else:
             self._line.setP2(source.scenePos())
         self.setLine(self._line)
+
+    def getOppositePointOf(self, point: 'ConnectionPoint'):
+        if self.start != point:
+            return self.start
+        else:
+            return self.end
 
 class ConnectionPoint(QGraphicsEllipseItem):
     DIAMETER = 10
@@ -195,11 +225,11 @@ class DraggableNode(QGraphicsItem):
     outputPoints: list[ConnectionPoint]
     inputPoints: list[ConnectionPoint]
     stateIndicator: QGraphicsTextItem
+    id = None #UUID
 
     def __init__(self, gateType: GateType, x: int , y: int, state: bool = False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #self.pen = QPen(Qt.GlobalColor.black, 2)
-        #self.connectionBrush = QBrush(QColor(214, 13, 36))
+        self.id = uuid.uuid4()
         self.outputPoints = []
         self.inputPoints = []
         self.pixmap = QPixmap(PIXMAP_FILES_DICT[gateType])
@@ -218,13 +248,13 @@ class DraggableNode(QGraphicsItem):
             self.stateIndicator.setY(self.boundingRect().center().y() - self.stateIndicator.boundingRect().center().y())
         if gateType == GateType.OUTPUT:
             self.stateIndicator = QGraphicsTextItem("0", self)
-            self.stateIndicator.setX(self.boundingRect().center().x() - self.stateIndicator.boundingRect().center().x() + 8)
+            self.stateIndicator.setX(self.boundingRect().center().x() - self.stateIndicator.boundingRect().center().x() + 12)
             self.stateIndicator.setY(self.boundingRect().center().y() - self.stateIndicator.boundingRect().center().y())
 
         if GateInputCount[gateType] == 1:
             connectionPoint = ConnectionPoint(self, True, 0)
             self.inputPoints.append(connectionPoint)
-            connectionPoint.setX(0 + ConnectionPoint.DIAMETER)
+            connectionPoint.setX(0 + ConnectionPoint.DIAMETER - 3)
             connectionPoint.setY(self.getCenterY())
         if GateInputCount[gateType] == 2:
             connectionPoint = ConnectionPoint(self, True, 0)
@@ -502,6 +532,13 @@ class Scene(QGraphicsScene):
         self.draggableNodeList.remove(draggableNode)
         return
 
+    def clear(self):
+        self.startConnectionPoint = None
+        self.newConnectionLine = None
+        self.draggableNodeList = []
+        super().clear()
+
+
 def printAllStates(draggableNodeList: list[DraggableNode | None]) -> None:
     print("\n==== STATES ====")
     for draggableNode in draggableNodeList:
@@ -520,3 +557,74 @@ def printAllStates(draggableNodeList: list[DraggableNode | None]) -> None:
                         print("\t", output)
         print("")
     return
+
+
+def saveNodeGraph(scene: Scene, filename):
+    data = {"nodes": [], "connections": []}
+
+    for node in scene.draggableNodeList:
+        if not node:
+            continue
+        data["nodes"].append({
+            "id": str(node.id),
+            "type": node.gateType.name,
+            "x": node.x(),
+            "y": node.y(),
+            "state": getattr(node, "state", False),
+            "inputs": len(node.inputPoints),
+            "outputs": len(node.inputPoints),
+        })
+
+        for output in node.outputPoints:
+            for line in output.lines:
+                input = line.getOppositePointOf(output)
+                if not input:
+                    continue
+                data["connections"].append({
+                    "from_node": str(node.id),
+                    "from_output": output.orderIndex,
+                    "to_node": str(input.parentDraggableNode.id),
+                    "to_input": input.orderIndex
+                })
+
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=4)
+
+def loadNodeGraph(scene: Scene, filename):
+    import json
+
+    with open(filename, "r") as f:
+        data = json.load(f)
+
+    uuidToNode = {} # keep track of nodes and their uuids for connections
+
+    scene.clear()
+
+    # Create nodes
+    for node_data in data["nodes"]:
+        gateType = GateType[node_data["type"]]
+        x = node_data["x"]
+        y = node_data["y"]
+        state = node_data.get("state", False)
+
+        node = DraggableNode(gateType, x, y, state)
+        node.id = uuid.UUID(node_data["id"])
+        scene.addNodeItem(node)
+
+        uuidToNode[node.id] = node
+
+    # Connect connection points
+    for connectionPoint in data["connections"]:
+        fromId = uuid.UUID(connectionPoint["from_node"])
+        toId = uuid.UUID(connectionPoint["to_node"])
+        fromOutputIndex = connectionPoint["from_output"]
+        toInputIndex = connectionPoint["to_input"]
+
+        fromNode = uuidToNode[fromId]
+        toNode = uuidToNode[toId]
+        outputPoint = fromNode.outputPoints[fromOutputIndex]
+        inputPoint = toNode.inputPoints[toInputIndex]
+
+        scene.connectPoints(outputPoint, inputPoint, givenLine=None)
+        #outputPoint.lines.append(line)
+        #inputPoint.lines.append(line)
